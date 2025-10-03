@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VNM</title>
+    <link href="https://fonts.googleapis.com/css2?family=Mali&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            height: 100vh;
+            background-color: #121212;
+            overflow: hidden;
+            position: relative;
+        }
+        @keyframes starBlink {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+        .moon-container {
+            position: fixed;
+            top: 8vh;
+            right: 8vw;
+            z-index: 10;
+            pointer-events: none;
+        }
+        .moon-glow {
+            position: absolute;
+            width: 140px;
+            height: 140px;
+            left: -20px;
+            top: -20px;
+            background: radial-gradient(
+                circle,
+                rgba(255, 235, 59, 0.10) 0%,
+                rgba(255, 235, 59, 0.06) 40%,
+                rgba(255, 235, 59, 0.03) 70%,
+                rgba(255, 235, 59, 0.01) 90%,
+                transparent 100%
+            );
+            border-radius: 50%;
+            filter: blur(3px);
+            z-index: 1;
+        }
+        .moon {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            background: radial-gradient(circle at 60% 40%, #fffde4 70%, #ffe066 100%);
+            border-radius: 50%;
+            box-shadow: 0 0 50px 20px #f3e2a155;
+            z-index: 2;
+        }
+        /* Đèn trời */
+        .lantern {
+            position: fixed;
+            width: 46px;
+            height: 48px;
+            pointer-events: auto;
+            cursor: pointer;
+            z-index: 20;
+            animation: flyLantern linear forwards;
+            --lantern-opacity: 1;
+            opacity: var(--lantern-opacity);
+            transition: filter 0.2s ease;
+        }
+        .lantern:hover {
+            filter: brightness(1.3) drop-shadow(0 0 10px rgba(255, 235, 59, 0.6));
+        }
+        @keyframes flyLantern {
+            0% {
+                opacity: var(--lantern-opacity);
+                transform: translateY(0) scale(0.9) rotate(-5deg);
+            }
+            10% {
+                opacity: var(--lantern-opacity);
+            }
+            80% {
+                opacity: var(--lantern-opacity);
+            }
+            100% {
+                opacity: 0;
+                transform: translateY(-110vh) scale(1.1) rotate(8deg);
+            }
+        }
+        /* Popup lời chúc */
+        .wish-modal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            background: linear-gradient(135deg, #ff6b9d 0%, #ffc371 100%);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(255, 107, 157, 0.4);
+            z-index: 1000;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        .wish-modal.show {
+            transform: translate(-50%, -50%) scale(1);
+            opacity: 1;
+        }
+        .wish-modal h2 {
+            font-family: 'Be Vietnam Pro', sans-serif;
+            color: white;
+            font-size: 28px;
+            margin: 0 0 20px 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+        }
+        .wish-modal p {
+            font-family: 'Mali', cursive;
+            color: white;
+            font-size: 20px;
+            line-height: 1.6;
+            margin: 0 0 30px 0;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
+        }
+        .wish-modal img {
+            max-width: 90%;
+            border-radius: 15px;
+            margin-bottom: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        .close-btn {
+            background: white;
+            color: #ff6b9d;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 25px;
+            font-family: 'Be Vietnam Pro', sans-serif;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+        }
+        .close-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 7px 20px rgba(0,0,0,0.3);
+            background: #fff5f8;
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            z-index: 999;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        .overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="overlay" id="overlay"></div>
+    <div class="wish-modal" id="wishModal">
+        <div id="wishContent"></div>
+        <button class="close-btn" onclick="closeWish()">Đóng</button>
+    </div>
+    <div id="star-background"></div>
+    <div class="moon-container">
+        <div class="moon-glow"></div>
+        <div class="moon"></div>
+    </div>
+    <audio id="music" controls autoplay loop hidden >
+        <source src="./nhac/thangcuoi.mp3" type="audio/mp3">
+        khong co audio
+    </audio>
+
+
+
+    <script>
+        const bgm = document.getElementById("music");
+
+    // Khi người dùng click lần đầu -> phát nhạc
+    document.body.addEventListener("click", function playMusicOnce() {
+        bgm.play();
+        // Gỡ event để không gọi lại nhiều lần
+        document.body.removeEventListener("click", playMusicOnce);
+    });
+        // Tạo nền sao ngay khi tải trang
+        let starBackground = document.getElementById("star-background");
+        if (!starBackground) {
+            starBackground = document.createElement("div");
+            starBackground.id = "star-background";
+            document.body.appendChild(starBackground);
+        }
+        Object.assign(starBackground.style, {
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: "100vw",
+            height: "100vh",
+            backgroundColor: "rgba(18, 18, 18, 0.95)",
+            zIndex: "-1",
+            pointerEvents: "none",
+            overflow: "hidden"
+        });
+        const starCount = 80;
+        for (let i = 0; i < starCount; i++) {
+            const star = document.createElement("div");
+            star.className = "star";
+            starBackground.appendChild(star);
+            const size = Math.random() * 2 + 1 + "px";
+            const left = Math.random() * 100 + "vw";
+            const top = Math.random() * 100 + "vh";
+            const delay = Math.random() * 3 + "s";
+            const duration = (Math.random() * 2 + 1) + "s";
+            star.style.cssText = `
+                position: absolute;
+                width: ${size};
+                height: ${size};
+                background: white;
+                border-radius: 50%;
+                left: ${left};
+                top: ${top};
+                opacity: 0;
+                animation: starBlink ${duration} ease-in-out infinite;
+                animation-delay: ${delay};
+            `;
+        }
+
+
+        // Danh sách lời chúc
+        const wishes = [
+            { type: 'text', content: 'Dù trăng có sáng đến đâu cũng không bằng nụ cười của cậu 🥰' },
+            { type: 'text', content: 'Chúc Trung Thu của cậu rực rỡ như ánh trăng rằm, ngập tràn niềm vui 🌕✨' },
+            { type: 'text', content: 'Chúc cậu Trung Thu vui vẻ, tràn ngập tiếng cười 🌕😄' },
+            { type: 'text', content: 'Chúc cậu có những ước mơ như đèn lồng bay cao, sáng mãi trong bầu trời đêm 🏮🌟' },
+            { type: 'text', content: 'Trung Thu đoàn viên, chúc gia đình cậu hạnh phúc 🏡💛' },
+            { type: 'text', content: 'Người ta ngắm trăng rằm, còn tớ chỉ muốn ngắm cậu thôi 🌙👀' },
+            { type: 'text', content: 'Tớ không biết gửi gì cho cậu dịp Trung Thu… nên gửi luôn cả tấm lòng này 💌' },
+            { type: 'text', content: 'Trung Thu mà có cậu thì chắc chắn vui gấp bội lần 😍' },
+            { type: 'text', content: 'Trăng hôm nay thật đẹp, cậu cũng vậy 😳🌕' },
+            { type: 'text', content: 'Chúc cậu bình an, hạnh phúc như đêm trăng rằm 💖' },
+            { type: 'image', content: './image/anh1.png' },
+            { type: 'image', content: './image/anh2.png' },
+            { type: 'image', content: './image/anh3.png' },
+            { type: 'image', content: './image/anh4.png' },
+            { type: 'image', content: './image/anh5.png' },
+            { type: 'image', content: './image/anh6.png' }
+        ];
+
+        function showWish(wishData) {
+            const overlay = document.getElementById('overlay');
+            const modal = document.getElementById('wishModal');
+            const content = document.getElementById('wishContent');
+            
+            if (wishData.type === 'text') {
+                content.innerHTML = `
+                    
+                    <p>${wishData.content}</p>
+                `;
+            } else if (wishData.type === 'image') {
+                content.innerHTML = `
+                    <h2>Trung Thu vui vẻ 😊</h2>
+                    <img src="${wishData.content}" alt="Hình chúc mừng">
+                `;
+            }
+            
+            overlay.classList.add('show');
+            modal.classList.add('show');
+        }
+
+        function closeWish() {
+            const overlay = document.getElementById('overlay');
+            const modal = document.getElementById('wishModal');
+            overlay.classList.remove('show');
+            modal.classList.remove('show');
+        }
+
+        // Đóng khi click vào overlay
+        document.getElementById('overlay').addEventListener('click', closeWish);
+
+        // Đèn trời bay
+        const lanternImgSrc = "lantern.png";
+        
+        function createLantern() {
+            const lantern = document.createElement("img");
+            lantern.src = lanternImgSrc;
+            lantern.className = "lantern";
+
+            // Kích thước ngẫu nhiên (giả lập xa gần)
+            const scale = Math.random() * 0.5 + 0.6; // 0.5 - 1.1
+            lantern.style.width = 46 * scale + "px";
+            lantern.style.height = 48 * scale + "px";
+
+            // Độ mờ ngẫu nhiên (xa thì mờ hơn, hoặc ngẫu nhiên mờ hẳn)
+            let opacity;
+            if (Math.random() < 0.25) {
+                // 25% đèn sẽ mờ hẳn để tạo hiệu ứng 3D
+                opacity = Math.random() * 0.25 + 0.15; // 0.15 - 0.4
+            } else {
+                // Còn lại như cũ
+                opacity = scale < 0.85 ? Math.random() * 0.3 + 0.3 : Math.random() * 0.2 + 0.8;
+            }
+            lantern.style.setProperty('--lantern-opacity', opacity);
+
+            // Vị trí xuất phát ngẫu nhiên phía dưới màn hình
+            const left = Math.random() * 80 + 10; // 10vw - 90vw
+            lantern.style.left = left + "vw";
+            lantern.style.bottom = "-60px";
+
+            // Thời gian bay ngẫu nhiên (xa thì bay chậm hơn)
+            const duration = (1.7 - scale) * 7 + 7; // scale nhỏ thì lâu hơn
+            lantern.style.animationDuration = duration + "s";
+
+            // Lớp z-index cho hiệu ứng 3D (gần thì nổi hơn)
+            lantern.style.zIndex = Math.round(scale * 100) + 10;
+
+            // Gán lời chúc ngẫu nhiên cho đèn trời
+            const randomWish = wishes[Math.floor(Math.random() * wishes.length)];
+            lantern.addEventListener('click', (e) => {
+                e.stopPropagation();
+                showWish(randomWish);
+            });
+
+            document.body.appendChild(lantern);
+            setTimeout(() => lantern.remove(), duration * 1000);
+        }
+
+        // Tạo nhiều đèn trời mỗi lần, tăng tần suất
+        setInterval(() => {
+            const count = Math.floor(Math.random() * 3) + 4; // 2-4 đèn mỗi đợt
+            for (let i = 0; i < count; i++) {
+                setTimeout(createLantern, i * 250); // giãn cách nhẹ giữa các đèn
+            }
+        }, 900);    
+    </script>
+</body>
+</html>
